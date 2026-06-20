@@ -1,3 +1,5 @@
+import type { Evidence } from '../knowhow/evidence.js';
+
 export interface SensorAlert {
   system: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
@@ -14,6 +16,7 @@ export interface AIPosition {
   riskLevel?: number;
   estimatedLoss?: number;
   reoccurrenceRate?: number;
+  rawData?: Record<string, unknown>;
 }
 
 export interface DebateResult {
@@ -30,5 +33,8 @@ export interface DebateResult {
     dataLossRisk: number;
     monthlyLoss: number;
     reoccurrence30d: number;
+    estimatedMinutes: number;
+    executorHint: string;
   };
+  evidence: Evidence;
 }

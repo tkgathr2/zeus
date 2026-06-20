@@ -3,6 +3,12 @@ import { checkRailway } from './railway.js';
 import { checkSentry } from './sentry.js';
 import { checkSlack } from './slack.js';
 import { checkKnowHow } from './knowhow.js';
+import { checkMF } from './mf.js';
+import { checkSterepo } from './sterepo.js';
+import { checkBacklog } from './backlog.js';
+import { checkCalendar } from './calendar.js';
+
+const ORDER = { critical: 0, high: 1, medium: 2, low: 3 };
 
 export async function collectAlerts(): Promise<SensorAlert[]> {
   const results = await Promise.allSettled([
@@ -10,20 +16,18 @@ export async function collectAlerts(): Promise<SensorAlert[]> {
     checkSentry(),
     checkSlack(),
     checkKnowHow(),
+    checkMF(),
+    checkSterepo(),
+    checkBacklog(),
+    checkCalendar(),
   ]);
 
   const alerts: SensorAlert[] = [];
   for (const r of results) {
-    if (r.status === 'fulfilled') {
-      alerts.push(...r.value);
-    } else {
-      console.warn('[Zeus sensor] エラー:', r.reason);
-    }
+    if (r.status === 'fulfilled') alerts.push(...r.value);
+    else console.warn('[Zeus sensor] エラー:', r.reason);
   }
 
-  // severity順にソート（critical > high > medium > low）
-  const order = { critical: 0, high: 1, medium: 2, low: 3 };
-  alerts.sort((a, b) => order[a.severity] - order[b.severity]);
-
+  alerts.sort((a, b) => ORDER[a.severity] - ORDER[b.severity]);
   return alerts;
 }

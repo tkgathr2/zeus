@@ -1,17 +1,39 @@
 import 'dotenv/config';
+import { startServer } from './server/app.js';
 import { startScheduler } from './cron/scheduler.js';
+import { prisma } from './db.js';
 
-console.log('⚡ Zeus 起動中...');
-console.log(`  環境: ${process.env.NODE_ENV ?? 'development'}`);
-console.log(`  LINE: ${process.env.LINE_CHANNEL_ACCESS_TOKEN ? '✅' : '⚠️ 未設定'}`);
-console.log(`  Railway: ${process.env.RAILWAY_API_TOKEN ? '✅' : '⚠️ 未設定'}`);
-console.log(`  Sentry: ${process.env.SENTRY_AUTH_TOKEN ? '✅' : '⚠️ 未設定'}`);
-console.log(`  Slack: ${process.env.SLACK_BOT_TOKEN ? '✅' : '⚠️ 未設定'}`);
-console.log(`  KnowHow: ${process.env.KB_API_KEY ? '✅' : '⚠️ 未設定'}`);
+async function main() {
+  console.log('⚡ Zeus 起動中...');
 
-startScheduler();
+  const checks = {
+    'LINE     ': process.env.LINE_CHANNEL_ACCESS_TOKEN,
+    'Railway  ': process.env.RAILWAY_API_TOKEN,
+    'Sentry   ': process.env.SENTRY_AUTH_TOKEN,
+    'Slack    ': process.env.SLACK_BOT_TOKEN,
+    'MF       ': process.env.MF_ACCESS_TOKEN,
+    'Backlog  ': process.env.BACKLOG_API_KEY,
+    'Calendar ': process.env.GOOGLE_CALENDAR_ACCESS_TOKEN,
+    'KnowHow  ': process.env.KB_API_KEY,
+  };
 
-process.on('SIGTERM', () => {
-  console.log('[Zeus] シャットダウン');
+  for (const [name, val] of Object.entries(checks)) {
+    console.log(`  ${name}: ${val ? '✅' : '⚠️  未設定'}`);
+  }
+
+  await prisma.$connect();
+  console.log('[Zeus] DB接続完了');
+
+  startServer();
+  startScheduler();
+}
+
+main().catch(err => {
+  console.error('[Zeus] 起動エラー:', err);
+  process.exit(1);
+});
+
+process.on('SIGTERM', async () => {
+  await prisma.$disconnect();
   process.exit(0);
 });
