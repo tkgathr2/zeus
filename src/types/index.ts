@@ -35,6 +35,7 @@ export interface DebateResult {
     reoccurrence30d: number;
     estimatedMinutes: number;
     executorHint: string;
+    alternativeSolution: string; // マスク(Gemini)視点の根本解決案
   };
   evidence: Evidence;
 }

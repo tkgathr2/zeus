@@ -14,7 +14,7 @@ model Proposal {
   rawData      Json
   debateResult Json
   lineMessage  String
-  status       String   @default("pending") // pending | approved | rejected | executed | failed
+  status       String   @default("pending") // pending | awaiting_line_reply | approved | rejected | executed | failed
   executedAt   DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

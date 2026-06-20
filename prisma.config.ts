@@ -7,7 +7,8 @@ export default defineConfig({
     async adapter() {
       const { PrismaPg } = await import('@prisma/adapter-pg');
       const { default: pg } = await import('pg');
-      const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+      const connStr = process.env.ZEUS_DATABASE_URL ?? process.env.DATABASE_URL;
+      const pool = new pg.Pool({ connectionString: connStr });
       return new PrismaPg(pool);
     },
   },

@@ -4,7 +4,7 @@ import { startScheduler } from './cron/scheduler.js';
 import { prisma } from './db.js';
 
 async function main() {
-  console.log('⚡ Zeus 起動中...');
+  console.log('⚡ Zeus Phase2 起動中...');
 
   const checks = {
     'LINE     ': process.env.LINE_CHANNEL_ACCESS_TOKEN,
@@ -15,6 +15,8 @@ async function main() {
     'Backlog  ': process.env.BACKLOG_API_KEY,
     'Calendar ': process.env.GOOGLE_CALENDAR_ACCESS_TOKEN,
     'KnowHow  ': process.env.KB_API_KEY,
+    'Tavily   ': process.env.TAVILY_API_KEY,
+    'Zeus DB  ': process.env.ZEUS_DATABASE_URL ?? process.env.DATABASE_URL,
   };
 
   for (const [name, val] of Object.entries(checks)) {
