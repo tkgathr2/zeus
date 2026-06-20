@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "tsc",
-    "start": "node dist/index.js",
+    "build": "tsc && npx prisma generate",
+    "start": "npx prisma db push && node dist/index.js",
     "dev": "ts-node src/index.ts"
   },
   "repository": {
