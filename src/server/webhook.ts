@@ -8,6 +8,7 @@ import {
   sendExecutionResult,
 } from '../line/notify.js';
 import { invokeZeus } from './zeus-invoke.js';
+import { recordFeedback } from '../learning/feedback.js';
 import type { DebateResult, SensorAlert } from '../types/index.js';
 
 function verifySignature(body: string, signature: string): boolean {
@@ -83,26 +84,32 @@ async function handleCommand(parsed: ParsedCommand): Promise<void> {
   switch (command) {
     case 'ok':
       await prisma.proposal.update({ where: { id: proposalId }, data: { status: 'approved' } });
+      // フィードバック学習: 承認された提案パターンを記録
+      recordFeedback(proposal, 'approved').catch(() => {});
       executeProposal(proposalId).catch(err =>
         console.error(`[Zeus Executor] #${proposalId} 実行エラー:`, err)
       );
       break;
 
     case 'detail':
-      // ステータスは変えずに詳細メッセージを送信
       await sendDetailReply(proposalId, debateResult);
+      // フィードバック学習: 詳細確認が必要だったパターンを記録
+      recordFeedback(proposal, 'detail_requested').catch(() => {});
       console.log(`[Zeus] #${proposalId} 詳細分析を送信しました`);
       break;
 
     case 'skip':
       await prisma.proposal.update({ where: { id: proposalId }, data: { status: 'rejected' } });
-      await sendExecutionResult(proposalId, true, '保留にしました。15分後のチェックで再評価します。');
+      // フィードバック学習: スキップされた提案パターンを記録（次回から不要と判断）
+      recordFeedback(proposal, 'rejected').catch(() => {});
+      await sendExecutionResult(proposalId, true, 'スキップしました。同種の問題は次回から学習済みとして扱います。');
       console.log(`[Zeus] #${proposalId} をスキップしました`);
       break;
 
     case 'alternative':
-      // ステータスは変えずに代替案を送信
       await sendAlternativeReply(proposalId, debateResult);
+      // フィードバック学習: 代替案（マスク視点）が好まれたことを記録
+      recordFeedback(proposal, 'alternative_preferred').catch(() => {});
       console.log(`[Zeus] #${proposalId} 代替案を送信しました`);
       break;
   }

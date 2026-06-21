@@ -2,6 +2,7 @@ import { prisma } from '../db.js';
 import { recordResolution } from '../knowhow/evidence.js';
 import { sendExecutionResult } from '../line/notify.js';
 import { runZeusAgent } from './zeus-agent.js';
+import { recordShikujiri } from '../learning/feedback.js';
 
 export async function executeProposal(proposalId: number): Promise<void> {
   const proposal = await prisma.proposal.findUnique({ where: { id: proposalId } });
@@ -52,6 +53,9 @@ export async function executeProposal(proposalId: number): Promise<void> {
       'zeus_agent',
       false,
     ).catch(() => {});
+
+    // 失敗時は自動でしくじり先生カードを作成（成長のための記録）
+    recordShikujiri(proposal, summary).catch(() => {});
   }
 
   await sendExecutionResult(proposalId, success, summary);

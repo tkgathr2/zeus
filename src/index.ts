@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { startServer } from './server/app.js';
+import { startWeeklyReport } from './cron/weekly-report.js';
 import { prisma } from './db.js';
 
 async function main() {
@@ -27,6 +28,7 @@ async function main() {
   console.log('[Zeus] 受け口: POST /webhook (LINE) | POST /sentry | POST /alert | POST /zeus/invoke');
 
   startServer();
+  startWeeklyReport();
 }
 
 main().catch(err => {
