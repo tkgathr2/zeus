@@ -7,7 +7,8 @@ import {
   sendAlternativeReply,
   sendExecutionResult,
 } from '../line/notify.js';
-import type { DebateResult } from '../types/index.js';
+import { invokeZeus } from './zeus-invoke.js';
+import type { DebateResult, SensorAlert } from '../types/index.js';
 
 function verifySignature(body: string, signature: string): boolean {
   const secret = process.env.LINE_CHANNEL_SECRET ?? '';
@@ -107,6 +108,20 @@ async function handleCommand(parsed: ParsedCommand): Promise<void> {
   }
 }
 
+// 自由テキストをZeusタスクとして発動
+async function handleFreeText(text: string): Promise<void> {
+  const alert: SensorAlert = {
+    system: 'LINE_INPUT',
+    severity: 'medium',
+    title: text.length > 80 ? text.substring(0, 80) + '…' : text,
+    rawData: { source: 'LINE直接入力', userInput: text },
+    detectedAt: new Date().toISOString(),
+  };
+  await invokeZeus(alert).catch(err =>
+    console.error('[Zeus] LINE自由テキスト処理エラー:', err)
+  );
+}
+
 export async function lineWebhook(req: Request, res: Response): Promise<void> {
   const signature = req.headers['x-line-signature'] as string;
   const rawBody = JSON.stringify(req.body);
@@ -124,13 +139,16 @@ export async function lineWebhook(req: Request, res: Response): Promise<void> {
 
     const text: string = event.message.text ?? '';
     const parsed = parseCommand(text);
-    if (!parsed) {
-      console.log(`[Zeus Webhook] 未認識メッセージ: ${text.slice(0, 50)}`);
-      continue;
-    }
 
-    await handleCommand(parsed).catch(err =>
-      console.error(`[Zeus Webhook] コマンド処理エラー:`, err)
-    );
+    if (parsed) {
+      // #ID コマンド処理（OK/詳しく/スキップ/別の方法）
+      await handleCommand(parsed).catch(err =>
+        console.error(`[Zeus Webhook] コマンド処理エラー:`, err)
+      );
+    } else {
+      // 自由テキスト → Zeusが全力で応答
+      console.log(`[Zeus Webhook] 自由テキスト受信: ${text.slice(0, 60)}`);
+      await handleFreeText(text);
+    }
   }
 }

@@ -1,22 +1,21 @@
 import 'dotenv/config';
 import { startServer } from './server/app.js';
-import { startScheduler } from './cron/scheduler.js';
 import { prisma } from './db.js';
 
 async function main() {
-  console.log('⚡ Zeus Phase2 起動中...');
+  console.log('⚡ Zeus (全知全能モード) 起動中...');
+  console.log('[Zeus] モード: イベントドリブン（Sentry/LINE/API webhook で発動）');
 
   const checks = {
     'LINE     ': process.env.LINE_CHANNEL_ACCESS_TOKEN,
-    'Railway  ': process.env.RAILWAY_API_TOKEN,
     'Sentry   ': process.env.SENTRY_AUTH_TOKEN,
     'Slack    ': process.env.SLACK_BOT_TOKEN,
-    'MF       ': process.env.MF_ACCESS_TOKEN,
-    'Backlog  ': process.env.BACKLOG_API_KEY,
-    'Calendar ': process.env.GOOGLE_CALENDAR_ACCESS_TOKEN,
+    'Railway  ': process.env.RAILWAY_API_TOKEN,
     'KnowHow  ': process.env.KB_API_KEY,
     'Tavily   ': process.env.TAVILY_API_KEY,
     'Zeus DB  ': process.env.ZEUS_DATABASE_URL ?? process.env.DATABASE_URL,
+    'OpenAI   ': process.env.OPENAI_API_KEY,
+    'Gemini   ': process.env.GOOGLE_GENERATIVE_AI_API_KEY,
   };
 
   for (const [name, val] of Object.entries(checks)) {
@@ -25,9 +24,9 @@ async function main() {
 
   await prisma.$connect();
   console.log('[Zeus] DB接続完了');
+  console.log('[Zeus] 受け口: POST /webhook (LINE) | POST /sentry | POST /alert | POST /zeus/invoke');
 
   startServer();
-  startScheduler();
 }
 
 main().catch(err => {
