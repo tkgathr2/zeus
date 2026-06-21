@@ -4,6 +4,7 @@ import { openai } from '@ai-sdk/openai';
 import { google } from '@ai-sdk/google';
 import { gatherEvidence } from '../knowhow/evidence.js';
 import { webSearch } from '../search/web.js';
+import { recallFeedbackHints } from '../learning/feedback.js';
 import type { SensorAlert, AIPosition, DebateResult } from '../types/index.js';
 
 function parseJSON(text: string): Record<string, unknown> {
@@ -12,14 +13,14 @@ function parseJSON(text: string): Record<string, unknown> {
   try { return JSON.parse(match[0]); } catch { return {}; }
 }
 
-function buildContext(alert: SensorAlert, evidenceSummary: string, webResults: string[]): string {
+function buildContext(alert: SensorAlert, evidenceSummary: string, webResults: string[], feedbackHints: string): string {
   const webCtx = webResults.length > 0
     ? `\n\n【ウェブ調査結果 (${webResults.length}件)】\n${webResults.map((r, i) => `${i + 1}. ${r}`).join('\n')}`
     : '';
   return `システム: ${alert.system}
 問題: ${alert.title}
 データ: ${JSON.stringify(alert.rawData)}
-${evidenceSummary}${webCtx}`;
+${evidenceSummary}${webCtx}${feedbackHints}`;
 }
 
 // ── Proposer Round ─────────────────────────────────────
@@ -218,11 +219,12 @@ ${summary}
 export async function runDebate(alert: SensorAlert): Promise<DebateResult> {
   console.log(`[Zeus] MoAディベート開始: ${alert.title}`);
 
-  // 並列でコンテキスト収集（実績 + ウェブ2クエリ）
-  const [evidence, web1, web2] = await Promise.all([
+  // 並列でコンテキスト収集（実績 + ウェブ2クエリ + 過去フィードバック学習）
+  const [evidence, web1, web2, feedbackHints] = await Promise.all([
     gatherEvidence(alert),
     webSearch(alert.title),
     webSearch(`${alert.system} ${alert.title} 解決策 ベストプラクティス`),
+    recallFeedbackHints(alert.system, alert.title),
   ]);
 
   const webResults = [...new Set([...web1, ...web2])].slice(0, 6);
@@ -230,7 +232,11 @@ export async function runDebate(alert: SensorAlert): Promise<DebateResult> {
     ? `\n【過去実績】${evidence.sampleSize}件 / 成功率${evidence.successRate}% / 平均${evidence.avgDurationMin}分（${evidence.source === 'historical' ? '実績ベース' : 'AI推定'}）\n事例: ${evidence.relatedCases.slice(0, 2).join(' / ')}`
     : `\n【過去実績】なし（AI推定値を使用）`;
 
-  const ctx = buildContext(alert, evidenceSummary, webResults);
+  if (feedbackHints) {
+    console.log(`[Zeus] 過去フィードバック学習を取得（${alert.system}）`);
+  }
+
+  const ctx = buildContext(alert, evidenceSummary, webResults, feedbackHints);
   console.log(`[Zeus] コンテキスト確保（ウェブ${webResults.length}件 / 実績${evidence.sampleSize}件）`);
 
   const r1 = await proposerRound(ctx);
