@@ -1,7 +1,7 @@
 import axios from 'axios';
 import type { SensorAlert } from '../types/index.js';
 
-const BACKLOG_BASE = 'https://takagi.backlog.com/api/v2';
+const BACKLOG_BASE = 'https://takagigr.backlog.com/api/v2';
 
 export async function checkBacklog(): Promise<SensorAlert[]> {
   const apiKey = process.env.BACKLOG_API_KEY;
