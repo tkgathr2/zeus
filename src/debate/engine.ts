@@ -63,6 +63,9 @@ ${ctx}
 
 出力形式:
 {"premise":"そもそもの前提への問い","rootCause":"第一原理で見た根本原因","stopRisk":15,"dataLossRisk":5,"monthlyLoss":12,"reoccurrence30d":80,"verdict":"やるべき/廃止/作り直し","alternativeVision":"根本解決のビジョン"}`,
+    }).catch(err => {
+      console.warn('[Zeus] Gemini(R1)フォールバック:', String(err).slice(0, 80));
+      return { text: '{"premise":"API停止中","rootCause":"Gemini APIクォータ超過","stopRisk":5,"dataLossRisk":0,"monthlyLoss":0,"reoccurrence30d":50,"verdict":"やるべき","alternativeVision":"Claude/GPTの分析を参照"}' };
     }),
   ]);
 
@@ -120,6 +123,9 @@ async function crossReviewRound(round1: AIPosition[]): Promise<AIPosition[]> {
       system: `あなたはイーロン・マスクです。孫正義と三木谷の意見を聞いて、リスク評価を更新。「やってはいけないこと」を明確に。`,
       prompt: `3人の初期分析:\n${r1Summary}\n\n最終リスク評価をJSONで:
 {"stopRisk":10,"dataLossRisk":2,"monthlyLoss":8,"reoccurrence30d":60,"finalVerdict":"最終判断","doNotDo":"絶対やってはいけないこと"}`,
+    }).catch(err => {
+      console.warn('[Zeus] Gemini(R2)フォールバック:', String(err).slice(0, 80));
+      return { text: '{"stopRisk":5,"dataLossRisk":0,"monthlyLoss":0,"reoccurrence30d":50,"finalVerdict":"Claude/GPT分析を参照","doNotDo":"Gemini APIが一時停止中"}' };
     }),
   ]);
 
