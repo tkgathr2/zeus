@@ -112,22 +112,50 @@ export function buildAlternativeMessage(result: DebateResult, proposalId: number
   ].join('\n');
 }
 
+async function sendSlackFallback(text: string, proposalId: number): Promise<void> {
+  const token = process.env.SLACK_BOT_TOKEN;
+  const channel = process.env.SLACK_ADMIN_USER_ID || 'UPFSHKUAW';
+  if (!token) {
+    console.error('[Zeus] SLACK_BOT_TOKEN 未設定 → Slackフォールバック失敗');
+    return;
+  }
+  const res = await fetch('https://slack.com/api/chat.postMessage', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ channel, text: `📱 LINE上限中（Slackへ転送）\n\n${text}` }),
+  });
+  const data = await res.json() as { ok: boolean; error?: string };
+  if (!data.ok) {
+    console.error('[Zeus] Slackフォールバック失敗:', data.error);
+  } else {
+    console.log(`[Zeus Slack] フォールバック送信完了 #${proposalId}`);
+  }
+}
+
 export async function sendProposal(result: DebateResult, proposalId: number): Promise<void> {
   const userId = process.env.LINE_USER_ID;
   if (!userId) throw new Error('LINE_USER_ID が未設定です');
 
-  await getClient().pushMessage({
-    to: userId,
-    messages: [{ type: 'text', text: buildMessage(result, proposalId) }],
-  });
+  try {
+    await getClient().pushMessage({
+      to: userId,
+      messages: [{ type: 'text', text: buildMessage(result, proposalId) }],
+    });
+    console.log(`[Zeus LINE] 送信完了 #${proposalId}: ${result.consensus.title}`);
+  } catch (err: any) {
+    if (err.status === 429) {
+      console.log(`[Zeus] LINE月間上限 → Slackフォールバック #${proposalId}`);
+      await sendSlackFallback(buildMessage(result, proposalId), proposalId);
+    } else {
+      throw err;
+    }
+  }
 
-  // 送信完了後 → awaiting_line_reply に更新
+  // 送信完了後 → awaiting_line_reply に更新（LINE/Slack どちら経由でも）
   await prisma.proposal.update({
     where: { id: proposalId },
     data: { status: 'awaiting_line_reply' },
   });
-
-  console.log(`[Zeus LINE] 送信完了 #${proposalId}: ${result.consensus.title}`);
 }
 
 export async function sendDetailReply(proposalId: number, result: DebateResult): Promise<void> {
