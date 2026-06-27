@@ -4,6 +4,8 @@ import { sentryWebhook, genericAlert } from './sentry-webhook.js';
 import { invokeZeus } from './zeus-invoke.js';
 import { prisma } from '../db.js';
 import type { SensorAlert } from '../types/index.js';
+import { DASHBOARD_HTML, buildDashboardStats } from './dashboard.js';
+import { runDailyNippou } from '../cron/daily-nippou.js';
 
 const app = express();
 
@@ -46,6 +48,26 @@ app.post('/zeus/invoke', async (req, res) => {
 // ─── ヘルスチェック ──────────────────────────────────────
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString(), mode: '全知全能モード（イベントドリブン）' });
+});
+
+// ─── ダッシュボード（人が見る画面） ───────────────────────
+app.get(['/', '/dashboard'], (_req, res) => {
+  res.type('html').send(DASHBOARD_HTML);
+});
+
+// ─── ダッシュボード用 集計API ────────────────────────────
+app.get('/api/stats', async (_req, res) => {
+  try {
+    res.json(await buildDashboardStats());
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// ─── 日報を今すぐ生成・投稿（手動トリガー / 動作確認用） ──
+app.post('/zeus/nippou/run', async (_req, res) => {
+  const result = await runDailyNippou();
+  res.status(result.ok ? 200 : 500).json(result);
 });
 
 // ─── 提案一覧 ────────────────────────────────────────────
