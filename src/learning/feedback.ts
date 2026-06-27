@@ -160,3 +160,46 @@ export async function getWeeklyStats(): Promise<{
     topSystems,
   };
 }
+
+export interface PeriodStats {
+  total: number;
+  approved: number;
+  rejected: number;
+  pending: number;
+  executed: number;
+  failed: number;
+  topSystems: Array<{ system: string; count: number }>;
+  recent: Array<{ id: number; system: string; title: string; severity: string; status: string; createdAt: Date }>;
+}
+
+// 任意期間（既定: 直近 hours 時間）の統計を取得。日報・ダッシュボード共用。
+export async function getStatsSince(hours: number): Promise<PeriodStats> {
+  const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+
+  const proposals = await prisma.proposal.findMany({
+    where: { createdAt: { gte: since } },
+    select: { id: true, system: true, title: true, severity: true, status: true, createdAt: true },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  const systemCounts: Record<string, number> = {};
+  for (const p of proposals) {
+    systemCounts[p.system] = (systemCounts[p.system] ?? 0) + 1;
+  }
+
+  const topSystems = Object.entries(systemCounts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5)
+    .map(([system, count]) => ({ system, count }));
+
+  return {
+    total: proposals.length,
+    approved: proposals.filter(p => ['approved', 'executed'].includes(p.status)).length,
+    rejected: proposals.filter(p => p.status === 'rejected').length,
+    pending: proposals.filter(p => ['pending', 'awaiting_line_reply'].includes(p.status)).length,
+    executed: proposals.filter(p => p.status === 'executed').length,
+    failed: proposals.filter(p => p.status === 'failed').length,
+    topSystems,
+    recent: proposals.slice(0, 10),
+  };
+}
