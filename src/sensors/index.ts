@@ -7,6 +7,7 @@ import { checkMF } from './mf.js';
 import { checkSterepo } from './sterepo.js';
 import { checkBacklog } from './backlog.js';
 import { checkCalendar } from './calendar.js';
+import { checkBrainOS } from './brainos.js';
 
 const ORDER = { critical: 0, high: 1, medium: 2, low: 3 };
 
@@ -20,6 +21,7 @@ export async function collectAlerts(): Promise<SensorAlert[]> {
     checkSterepo(),
     checkBacklog(),
     checkCalendar(),
+    checkBrainOS(),
   ]);
 
   const alerts: SensorAlert[] = [];
